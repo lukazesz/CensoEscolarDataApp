@@ -1,0 +1,39 @@
+/* Imagens do carrossel */
+.imagem-carrossel {
+  height: 420px;
+  object-fit: cover;
+}
+
+/* Legendas do carrossel */
+.carousel-caption {
+  background-color: rgba(0, 0, 0, 0.65);
+  border-radius: 10px;
+  padding: 15px;
+}
+
+/* Cartões estatísticos */
+.card-estatistica {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease;
+}
+
+.card-estatistica:hover {
+  transform: translateY(-5px);
+}
+
+/* Responsividade do carrossel */
+@media (max-width: 768px) {
+  .imagem-carrossel {
+    height: 280px;
+  }
+
+  .carousel-caption h3 {
+    font-size: 1.2rem;
+  }
+
+  .carousel-caption p {
+    font-size: 0.85rem;
+  }
+}
