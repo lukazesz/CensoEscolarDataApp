@@ -1,18 +1,81 @@
-import { useState } from 'react';
-import instituicoesData from '../datasets/instituicoes_pb_2025.json';
 
-function Instituicoes() {
-  const instituicoes = Array.isArray(instituicoesData)
-    ? instituicoesData
-    : instituicoesData.data || [];
+import { useState, useEffect } from 'react';
+import { FaTrash } from 'react-icons/fa';
 
-  // Estados dos filtros e da paginação
+function InstituicaoEnsino() {
+
+  // Estados das instituições, filtros e paginação
+  const [instituicoes, setInstituicoes] = useState([]);
   const [pesquisa, setPesquisa] = useState('');
   const [municipioSelecionado, setMunicipioSelecionado] = useState('');
   const [paginaAtual, setPaginaAtual] = useState(1);
 
-  // Quantidade de instituições exibidas por página
   const itensPorPagina = 10;
+
+  // Busca as instituições através da API
+  useEffect(() => {
+    async function carregarInstituicoes() {
+      try {
+        const response = await fetch(
+          'http://localhost:5000/instituicoesensino'
+        );
+
+        if (!response.ok) {
+          throw new Error('Erro ao carregar instituições.');
+        }
+
+        const dados = await response.json();
+
+        setInstituicoes(dados);
+
+      } catch (erro) {
+        console.error(erro);
+        window.alert('Não foi possível carregar as instituições.');
+      }
+    }
+
+    carregarInstituicoes();
+  }, []);
+
+  // Remove uma instituição através da API
+  const removerInstituicao = async (id) => {
+
+    // Solicita confirmação antes da exclusão
+    const confirmado = window.confirm(
+      'Deseja realmente excluir esta instituição de ensino?'
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    try {
+      // Envia a requisição DELETE para a API
+      const response = await fetch(
+        `http://localhost:5000/instituicoesensino/${id}`,
+        {
+          method: 'DELETE'
+        }
+      );
+
+      // Verifica se a exclusão foi realizada com sucesso
+      if (!response.ok) {
+        throw new Error('Erro ao excluir instituição.');
+      }
+
+      // Remove a instituição da tabela somente após
+      // a confirmação de sucesso da API
+      setInstituicoes((instituicoesAnteriores) =>
+        instituicoesAnteriores.filter(
+          (instituicao) => instituicao.id !== id
+        )
+      );
+
+    } catch (erro) {
+      console.error(erro);
+      window.alert('Não foi possível excluir a instituição.');
+    }
+  };
 
   // Obtém municípios sem repetições e em ordem alfabética
   const municipios = [...new Set(
@@ -46,6 +109,14 @@ function Instituicoes() {
     instituicoesOrdenadas.length / itensPorPagina
   );
 
+  // Corrige a paginação caso uma página deixe de existir
+  // após a exclusão de uma instituição
+  useEffect(() => {
+    if (paginaAtual > Math.max(1, totalPaginas)) {
+      setPaginaAtual(Math.max(1, totalPaginas));
+    }
+  }, [paginaAtual, totalPaginas]);
+
   // Define o intervalo de instituições da página atual
   const indiceInicial = (paginaAtual - 1) * itensPorPagina;
   const indiceFinal = indiceInicial + itensPorPagina;
@@ -73,8 +144,10 @@ function Instituicoes() {
 
   return (
     <main className="container py-5">
+
       <div className="text-center mb-5">
         <h1 className="fw-bold">Instituições de Ensino</h1>
+
         <p className="text-secondary">
           Consulte as instituições de ensino da Paraíba
           no Censo Escolar 2025.
@@ -83,8 +156,12 @@ function Instituicoes() {
 
       {/* Pesquisa e filtro por município */}
       <div className="row g-3 mb-4">
+
         <div className="col-12 col-md-7">
-          <label htmlFor="pesquisa" className="form-label fw-semibold">
+          <label
+            htmlFor="pesquisa"
+            className="form-label fw-semibold"
+          >
             Pesquisar instituição
           </label>
 
@@ -99,7 +176,10 @@ function Instituicoes() {
         </div>
 
         <div className="col-12 col-md-5">
-          <label htmlFor="municipio" className="form-label fw-semibold">
+          <label
+            htmlFor="municipio"
+            className="form-label fw-semibold"
+          >
             Filtrar por município
           </label>
 
@@ -118,34 +198,44 @@ function Instituicoes() {
             ))}
           </select>
         </div>
+
       </div>
 
       {/* Tabela de instituições */}
       <div className="card shadow-sm border-0">
         <div className="card-body">
+
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="fw-bold mb-0">Instituições de Ensino</h5>
+
+            <h5 className="fw-bold mb-0">
+              Instituições de Ensino
+            </h5>
 
             <span className="badge bg-secondary">
               {instituicoesFiltradas.length} resultado(s)
             </span>
+
           </div>
 
           <div className="table-responsive">
             <table className="table table-hover align-middle">
+
               <thead className="table-dark">
                 <tr>
                   <th>Posição</th>
                   <th>Instituição</th>
                   <th>Município</th>
                   <th className="text-end">Matrículas</th>
+                  <th className="text-center">Ações</th>
                 </tr>
               </thead>
 
               <tbody>
                 {ranking.length > 0 ? (
                   ranking.map((instituicao, indice) => (
-                    <tr key={instituicao.co_entidade}>
+
+                    <tr key={instituicao.id}>
+
                       <td>
                         <span className="badge bg-primary">
                           {indiceInicial + indice + 1}º
@@ -156,32 +246,57 @@ function Instituicoes() {
                         {instituicao.no_entidade}
                       </td>
 
-                      <td>{instituicao.no_municipio}</td>
+                      <td>
+                        {instituicao.no_municipio}
+                      </td>
 
                       <td className="text-end fw-bold">
                         {formatarNumero(instituicao.qt_mat_bas)}
                       </td>
+
+                      {/* Botão de exclusão */}
+                      <td className="text-center">
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm"
+                          title="Excluir instituição"
+                          aria-label={`Excluir ${instituicao.no_entidade}`}
+                          onClick={() =>
+                            removerInstituicao(instituicao.id)
+                          }
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+
                     </tr>
+
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="4" className="text-center py-4 text-secondary">
+                    <td
+                      colSpan="5"
+                      className="text-center py-4 text-secondary"
+                    >
                       Nenhuma instituição encontrada.
                     </td>
                   </tr>
                 )}
               </tbody>
+
             </table>
           </div>
 
           {/* Controles de paginação */}
           {totalPaginas > 0 && (
             <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 mt-4">
+
               <p className="text-secondary mb-0">
                 Página {paginaAtual} de {totalPaginas}
               </p>
 
               <div className="d-flex gap-2">
+
                 <button
                   className="btn btn-outline-primary"
                   disabled={paginaAtual === 1}
@@ -192,11 +307,12 @@ function Instituicoes() {
 
                 <button
                   className="btn btn-outline-primary"
-                  disabled={paginaAtual === totalPaginas}
+                  disabled={paginaAtual >= totalPaginas}
                   onClick={() => setPaginaAtual(paginaAtual + 1)}
                 >
                   Próxima
                 </button>
+
               </div>
 
               <p className="text-secondary mb-0">
@@ -204,13 +320,14 @@ function Instituicoes() {
                 {Math.min(indiceFinal, instituicoesFiltradas.length)}
                 {' '}de {instituicoesFiltradas.length}
               </p>
+
             </div>
           )}
+
         </div>
       </div>
     </main>
   );
 }
 
-export default Instituicoes;
-
+export default InstituicaoEnsino;
